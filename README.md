@@ -4,7 +4,7 @@
 
 ![TechPulse](https://img.shields.io/badge/TechPulse-AI%20News%20Narrator-6366f1?style=for-the-badge)
 
-🎥 **[Watch the TechPulse Demo Video on YouTube](https://www.youtube.com/watch?v=8LTd-p104Ec)**
+[![TechPulse Demo Video](https://img.youtube.com/vi/8LTd-p104Ec/maxresdefault.jpg)](https://www.youtube.com/watch?v=8LTd-p104Ec)
 
 ## ✨ Features
 
