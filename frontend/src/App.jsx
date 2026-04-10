@@ -19,9 +19,11 @@ function App() {
   const [queue, setQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [progress, setProgress] = useState(0);
-  const synthRef = useRef(window.speechSynthesis);
-  const utteranceRef = useRef(null);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef(new Audio());
 
   const currentArticle = currentIndex >= 0 ? queue[currentIndex] : null;
 
@@ -42,7 +44,6 @@ function App() {
       const data = await res.json();
       setArticles(data.articles || []);
     } catch (err) {
-      // Try all articles if today endpoint fails
       try {
         const res = await fetch(`${API_BASE}/articles`);
         const data = await res.json();
@@ -105,79 +106,107 @@ function App() {
     }
   };
 
-  // ---- TTS / Audio Queue Logic ----
+  // ---- OpenAI TTS Audio Playback ----
 
-  const speak = useCallback((text, onEnd) => {
-    const synth = synthRef.current;
-    synth.cancel();
+  // Set up audio event listeners once
+  useEffect(() => {
+    const audio = audioRef.current;
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-
-    // Try to use a natural-sounding voice
-    const voices = synth.getVoices();
-    const preferred = voices.find(
-      (v) => v.name.includes('Samantha') || v.name.includes('Google') || v.name.includes('Natural')
-    );
-    if (preferred) utterance.voice = preferred;
-
-    // Progress tracking
-    let startTime = Date.now();
-    const estimatedDuration = (text.length / 15) * 1000; // rough estimate
-
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const pct = Math.min((elapsed / estimatedDuration) * 100, 99);
-      setProgress(pct);
-    }, 200);
-
-    utterance.onend = () => {
-      clearInterval(interval);
-      setProgress(100);
-      if (onEnd) onEnd();
+    const onTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      if (audio.duration) {
+        setProgress((audio.currentTime / audio.duration) * 100);
+      }
     };
 
-    utterance.onerror = () => {
-      clearInterval(interval);
-      setProgress(0);
-      if (onEnd) onEnd();
+    const onLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setIsLoadingAudio(false);
     };
 
-    utteranceRef.current = utterance;
-    synth.speak(utterance);
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('canplaythrough', () => setIsLoadingAudio(false));
+
+    return () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+      audio.pause();
+    };
   }, []);
 
-  const playArticle = useCallback((article, articleQueue, index) => {
+  const playArticle = useCallback(async (article, articleQueue, index) => {
     setQueue(articleQueue);
     setCurrentIndex(index);
-    setIsPlaying(true);
+    setIsLoadingAudio(true);
     setProgress(0);
+    setCurrentTime(0);
+    setDuration(0);
     markAsRead(article.id);
 
-    const textToSpeak = `${article.title}. ${article.summary || ''}`;
+    addToast(`Generating narration for "${article.title.slice(0, 40)}..."`, 'info');
 
-    speak(textToSpeak, () => {
-      // Auto-advance to next
-      if (index < articleQueue.length - 1) {
-        const nextIndex = index + 1;
-        const nextArticle = articleQueue[nextIndex];
-        setTimeout(() => {
-          playArticle(nextArticle, articleQueue, nextIndex);
-        }, 500);
-      } else {
-        setIsPlaying(false);
-        setCurrentIndex(-1);
-        setProgress(0);
+    try {
+      // Call backend to generate OpenAI TTS audio
+      const res = await fetch(`${API_BASE}/audio/article/${article.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Audio generation failed');
       }
-    });
-  }, [speak, markAsRead]);
+
+      // Convert response to blob and create audio URL
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // Clean up previous blob URL
+      if (audioRef.current.src && audioRef.current.src.startsWith('blob:')) {
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+
+      const audio = audioRef.current;
+      audio.src = audioUrl;
+
+      // Auto-advance when track ends
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (index < articleQueue.length - 1) {
+          const nextIndex = index + 1;
+          setTimeout(() => {
+            playArticle(articleQueue[nextIndex], articleQueue, nextIndex);
+          }, 800);
+        } else {
+          setIsPlaying(false);
+          setCurrentIndex(-1);
+          setProgress(0);
+          addToast('Finished playing all articles', 'success');
+        }
+      };
+
+      await audio.play();
+      setIsPlaying(true);
+      setIsLoadingAudio(false);
+    } catch (err) {
+      console.error('Playback error:', err);
+      setIsLoadingAudio(false);
+      addToast(`Audio failed: ${err.message}`, 'error');
+    }
+  }, [addToast, markAsRead]);
 
   const handlePlayAll = () => {
     if (articles.length === 0) return;
     playArticle(articles[0], articles, 0);
-    addToast(`Playing ${articles.length} articles`, 'info');
+    addToast(`Queued ${articles.length} articles`, 'info');
   };
 
   const handlePlaySingle = (article) => {
@@ -186,26 +215,32 @@ function App() {
   };
 
   const handlePause = () => {
-    const synth = synthRef.current;
+    const audio = audioRef.current;
     if (isPlaying) {
-      synth.pause();
-      setIsPlaying(false);
+      audio.pause();
     } else {
-      synth.resume();
-      setIsPlaying(true);
+      audio.play();
     }
   };
 
   const handleStop = () => {
-    synthRef.current.cancel();
+    const audio = audioRef.current;
+    audio.pause();
+    audio.currentTime = 0;
+    if (audio.src && audio.src.startsWith('blob:')) {
+      URL.revokeObjectURL(audio.src);
+    }
+    audio.src = '';
     setIsPlaying(false);
     setCurrentIndex(-1);
     setProgress(0);
+    setCurrentTime(0);
+    setDuration(0);
   };
 
   const handleNext = () => {
     if (currentIndex < queue.length - 1) {
-      synthRef.current.cancel();
+      audioRef.current.pause();
       const nextIndex = currentIndex + 1;
       playArticle(queue[nextIndex], queue, nextIndex);
     }
@@ -213,23 +248,27 @@ function App() {
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      synthRef.current.cancel();
+      audioRef.current.pause();
       const prevIndex = currentIndex - 1;
       playArticle(queue[prevIndex], queue, prevIndex);
     }
   };
 
-  // Load voices
-  useEffect(() => {
-    const loadVoices = () => synthRef.current.getVoices();
-    loadVoices();
-    synthRef.current.onvoiceschanged = loadVoices;
-  }, []);
+  const handleSeek = (percent) => {
+    const audio = audioRef.current;
+    if (audio.duration) {
+      audio.currentTime = (percent / 100) * audio.duration;
+    }
+  };
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      synthRef.current.cancel();
+      const audio = audioRef.current;
+      audio.pause();
+      if (audio.src && audio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(audio.src);
+      }
     };
   }, []);
 
@@ -283,6 +322,7 @@ function App() {
             loading={loading}
             currentArticle={currentArticle}
             isPlaying={isPlaying}
+            isLoadingAudio={isLoadingAudio}
             onPlayAll={handlePlayAll}
             onPlaySingle={handlePlaySingle}
             onMarkRead={markAsRead}
@@ -300,13 +340,17 @@ function App() {
       <AudioPlayer
         currentArticle={currentArticle}
         isPlaying={isPlaying}
+        isLoadingAudio={isLoadingAudio}
         progress={progress}
+        currentTime={currentTime}
+        duration={duration}
         currentIndex={currentIndex}
         queueLength={queue.length}
         onPlayPause={handlePause}
         onStop={handleStop}
         onNext={handleNext}
         onPrevious={handlePrevious}
+        onSeek={handleSeek}
       />
 
       {/* Toasts */}

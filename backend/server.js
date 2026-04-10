@@ -9,6 +9,7 @@ import articlesRouter from './routes/articles.js';
 import sourcesRouter from './routes/sources.js';
 import topicsRouter from './routes/topics.js';
 import fetchRouter from './routes/fetch.js';
+import audioRouter from './routes/audio.js';
 import { fetchAllSources } from './services/fetcher.js';
 import { summarizeBatch } from './services/summarizer.js';
 
@@ -25,6 +26,7 @@ app.use('/api/articles', articlesRouter);
 app.use('/api/sources', sourcesRouter);
 app.use('/api/topics', topicsRouter);
 app.use('/api/fetch', fetchRouter);
+app.use('/api/audio', audioRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

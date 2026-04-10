@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-function ArticleCard({ article, isPlaying, onPlay, onMarkRead, formatTime }) {
+function ArticleCard({ article, isPlaying, isLoadingAudio, onPlay, onMarkRead, formatTime }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -17,8 +17,9 @@ function ArticleCard({ article, isPlaying, onPlay, onMarkRead, formatTime }) {
             className="btn btn--ghost btn--sm"
             onClick={onPlay}
             title="Play this article"
+            disabled={isLoadingAudio}
           >
-            {isPlaying ? '⏸' : '▶'}
+            {isLoadingAudio ? '⏳' : isPlaying ? '⏸' : '▶'}
           </button>
           {!article.is_read && (
             <button
@@ -42,12 +43,8 @@ function ArticleCard({ article, isPlaying, onPlay, onMarkRead, formatTime }) {
       </div>
 
       <div className="article-card__meta">
-        <span className="article-card__source">
-          📰 {article.source_name}
-        </span>
-        <span className="article-card__time">
-          {formatTime(article.published_at)}
-        </span>
+        <span className="article-card__source">📰 {article.source_name}</span>
+        <span className="article-card__time">{formatTime(article.published_at)}</span>
         {article.is_read ? (
           <span className="article-card__badge" style={{ background: 'rgba(100,116,139,0.15)', color: '#94a3b8', borderColor: 'rgba(100,116,139,0.2)' }}>Read</span>
         ) : (
@@ -66,17 +63,11 @@ function ArticleCard({ article, isPlaying, onPlay, onMarkRead, formatTime }) {
       )}
 
       <div className="article-card__footer">
-        <button
-          className="btn btn--ghost btn--sm"
-          onClick={onPlay}
-        >
-          {isPlaying ? '⏸ Narrating...' : '🎧 Listen'}
+        <button className="btn btn--ghost btn--sm" onClick={onPlay} disabled={isLoadingAudio}>
+          {isLoadingAudio ? '⏳ Generating...' : isPlaying ? '⏸ Narrating...' : '🎧 Listen'}
         </button>
         {article.summary && article.summary.length > 200 && (
-          <button
-            className="btn btn--ghost btn--sm"
-            onClick={() => setExpanded(!expanded)}
-          >
+          <button className="btn btn--ghost btn--sm" onClick={() => setExpanded(!expanded)}>
             {expanded ? '▲ Less' : '▼ More'}
           </button>
         )}
@@ -85,15 +76,10 @@ function ArticleCard({ article, isPlaying, onPlay, onMarkRead, formatTime }) {
   );
 }
 
-function Dashboard({ articles, stats, loading, currentArticle, isPlaying, onPlayAll, onPlaySingle, onMarkRead }) {
+function Dashboard({ articles, stats, loading, currentArticle, isPlaying, isLoadingAudio, onPlayAll, onPlaySingle, onMarkRead }) {
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 18 ? 'Good Afternoon' : 'Good Evening';
-  const dateStr = now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   const formatTime = (dateStr) => {
     if (!dateStr) return '';
@@ -107,7 +93,6 @@ function Dashboard({ articles, stats, loading, currentArticle, isPlaying, onPlay
 
   return (
     <div id="dashboard">
-      {/* Header */}
       <div className="dashboard__header">
         <div>
           <h1 className="dashboard__greeting">
@@ -120,14 +105,13 @@ function Dashboard({ articles, stats, loading, currentArticle, isPlaying, onPlay
             id="btn-play-all"
             className="btn btn--primary btn--lg"
             onClick={onPlayAll}
-            disabled={articles.length === 0}
+            disabled={articles.length === 0 || isLoadingAudio}
           >
-            ▶ Play All ({articles.length})
+            {isLoadingAudio ? '⏳ Generating...' : `▶ Play All (${articles.length})`}
           </button>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="stats-bar">
         <div className="glass-card stat-card">
           <div className="stat-card__value">{stats.today || articles.length}</div>
@@ -147,7 +131,6 @@ function Dashboard({ articles, stats, loading, currentArticle, isPlaying, onPlay
         </div>
       </div>
 
-      {/* Articles */}
       {loading ? (
         <div className="articles-grid">
           {[1, 2, 3, 4].map((i) => (
@@ -168,16 +151,20 @@ function Dashboard({ articles, stats, loading, currentArticle, isPlaying, onPlay
         </div>
       ) : (
         <div className="articles-grid">
-          {articles.map((article) => (
-            <ArticleCard
-              key={article.id}
-              article={article}
-              isPlaying={currentArticle?.id === article.id && isPlaying}
-              onPlay={() => onPlaySingle(article)}
-              onMarkRead={() => onMarkRead(article.id)}
-              formatTime={formatTime}
-            />
-          ))}
+          {articles.map((article) => {
+            const isCurrent = currentArticle?.id === article.id;
+            return (
+              <ArticleCard
+                key={article.id}
+                article={article}
+                isPlaying={isCurrent && isPlaying}
+                isLoadingAudio={isCurrent && isLoadingAudio}
+                onPlay={() => onPlaySingle(article)}
+                onMarkRead={() => onMarkRead(article.id)}
+                formatTime={formatTime}
+              />
+            );
+          })}
         </div>
       )}
     </div>

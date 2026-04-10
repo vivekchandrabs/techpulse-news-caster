@@ -671,6 +671,16 @@ a:hover {
   box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
 }
 
+.player-control--loading {
+  animation: audioLoading 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes audioLoading {
+  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); transform: scale(1.05); }
+}
+
 .player-bar__progress {
   flex: 2;
   display: flex;
