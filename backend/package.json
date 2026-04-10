@@ -1,0 +1,23 @@
+{
+  "name": "techpulse-backend",
+  "version": "1.0.0",
+  "description": "TechPulse - Personalized AI News Narrator Backend",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "fetch": "node scripts/daily-fetch.js",
+    "seed": "node scripts/seed-demo.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3",
+    "openai": "^4.77.0",
+    "rss-parser": "^3.13.0"
+  }
+}
