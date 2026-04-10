@@ -40,15 +40,15 @@ router.post('/', async (req, res) => {
 
     // Insert into database
     const insert = db.prepare(`
-      INSERT OR IGNORE INTO articles (title, source_name, source_url, original_link, original_content, summary, published_at, summarized_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO articles (title, source_name, source_url, original_link, original_content, summary, narration, published_at, summarized_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMany = db.transaction((articles) => {
       for (const a of articles) {
         insert.run(
           a.title, a.source_name, a.source_url, a.original_link,
-          a.original_content, a.summary, a.published_at, a.summarized_at
+          a.original_content, a.summary, a.narration || null, a.published_at, a.summarized_at
         );
       }
     });
@@ -60,7 +60,7 @@ router.post('/', async (req, res) => {
       articles: summarized.length,
     });
   } catch (err) {
-    console.error('Fetch error:', err);
+
     res.status(500).json({ error: err.message });
   }
 });

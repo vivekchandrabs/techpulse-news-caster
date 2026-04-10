@@ -1,7 +1,55 @@
 import { useState } from 'react';
 
+/**
+ * Renders text with URLs converted to styled clickable links.
+ * URLs get a pill-shaped highlight so they stand out visually.
+ */
+function RichText({ text }) {
+  if (!text) return null;
+
+  // Split text by URLs, keeping the URLs as separate parts
+  const urlRegex = /(https?:\/\/[^\s,;)]+)/g;
+  const parts = text.split(urlRegex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (urlRegex.test(part)) {
+          // Reset regex lastIndex since test() advances it
+          urlRegex.lastIndex = 0;
+          // Extract a display name from the URL
+          let displayName;
+          try {
+            const url = new URL(part);
+            displayName = url.hostname.replace('www.', '');
+          } catch {
+            displayName = part.slice(0, 30) + '...';
+          }
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-link"
+              title={part}
+            >
+              🔗 {displayName}
+            </a>
+          );
+        }
+        // Reset regex for next iteration
+        urlRegex.lastIndex = 0;
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 function ArticleCard({ article, isPlaying, isLoadingAudio, onPlay, onMarkRead, formatTime }) {
   const [expanded, setExpanded] = useState(false);
+  const summaryText = article.summary || '';
+  const displayText = expanded ? summaryText : summaryText.slice(0, 200) + (summaryText.length > 200 ? '...' : '');
 
   return (
     <div
@@ -52,13 +100,13 @@ function ArticleCard({ article, isPlaying, isLoadingAudio, onPlay, onMarkRead, f
         )}
       </div>
 
-      {article.summary && (
+      {summaryText && (
         <div
           className={`article-card__summary ${isPlaying ? 'article-card__summary--highlight' : ''}`}
           onClick={() => setExpanded(!expanded)}
           style={{ cursor: 'pointer' }}
         >
-          {expanded ? article.summary : article.summary.slice(0, 200) + (article.summary.length > 200 ? '...' : '')}
+          <RichText text={displayText} />
         </div>
       )}
 
@@ -66,7 +114,7 @@ function ArticleCard({ article, isPlaying, isLoadingAudio, onPlay, onMarkRead, f
         <button className="btn btn--ghost btn--sm" onClick={onPlay} disabled={isLoadingAudio}>
           {isLoadingAudio ? '⏳ Generating...' : isPlaying ? '⏸ Narrating...' : '🎧 Listen'}
         </button>
-        {article.summary && article.summary.length > 200 && (
+        {summaryText.length > 200 && (
           <button className="btn btn--ghost btn--sm" onClick={() => setExpanded(!expanded)}>
             {expanded ? '▲ Less' : '▼ More'}
           </button>

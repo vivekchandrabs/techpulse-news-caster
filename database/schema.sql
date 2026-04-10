@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS articles (
   original_link TEXT UNIQUE,
   original_content TEXT,
   summary TEXT,
+  narration TEXT,
   topic TEXT,
   is_read INTEGER NOT NULL DEFAULT 0,
   published_at TEXT,

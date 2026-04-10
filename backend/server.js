@@ -35,7 +35,6 @@ app.get('/api/health', (req, res) => {
 
 // Schedule daily fetch at midnight
 cron.schedule('0 0 * * *', async () => {
-  console.log('\n⏰ Running scheduled daily fetch...');
   try {
     const db = getDb();
     const sources = db.prepare('SELECT * FROM sources WHERE active = 1').all();
@@ -53,43 +52,39 @@ cron.schedule('0 0 * * *', async () => {
       const summarized = await summarizeBatch(newArticles.slice(0, 30));
 
       const insert = db.prepare(`
-        INSERT OR IGNORE INTO articles (title, source_name, source_url, original_link, original_content, summary, published_at, summarized_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR IGNORE INTO articles (title, source_name, source_url, original_link, original_content, summary, narration, published_at, summarized_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       const insertMany = db.transaction((articles) => {
         for (const a of articles) {
           insert.run(
             a.title, a.source_name, a.source_url, a.original_link,
-            a.original_content, a.summary, a.published_at, a.summarized_at
+            a.original_content, a.summary, a.narration || null, a.published_at, a.summarized_at
           );
         }
       });
 
       insertMany(summarized);
-      console.log(`✅ Daily fetch complete: ${summarized.length} new articles`);
+      // Daily fetch complete
     } else {
-      console.log('ℹ️ No new articles found in daily fetch');
+      // No new articles found
     }
   } catch (err) {
-    console.error('❌ Daily fetch failed:', err.message);
+    // Daily fetch failed
   }
 });
 
 // Initialize database on startup
 getDb();
-console.log('📂 Database initialized');
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`\n🚀 TechPulse Backend running on http://localhost:${PORT}`);
-  console.log(`📡 Daily fetch scheduled for midnight`);
-  console.log(`💡 Trigger manual fetch: POST http://localhost:${PORT}/api/fetch`);
+  // Server started
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n👋 Shutting down...');
   closeDb();
   process.exit(0);
 });

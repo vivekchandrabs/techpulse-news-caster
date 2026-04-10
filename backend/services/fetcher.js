@@ -23,10 +23,9 @@ export async function fetchRssFeed(source) {
       published_at: item.isoDate || item.pubDate || new Date().toISOString(),
     }));
 
-    console.log(`  ✓ Fetched ${articles.length} articles from ${source.name}`);
     return articles;
   } catch (err) {
-    console.error(`  ✗ Failed to fetch ${source.name}: ${err.message}`);
+
     return [];
   }
 }
@@ -35,7 +34,6 @@ export async function fetchRssFeed(source) {
  * Fetch articles from all active sources.
  */
 export async function fetchAllSources(sources) {
-  console.log(`\n📡 Fetching from ${sources.length} sources...`);
   const results = await Promise.allSettled(
     sources.map((source) => fetchRssFeed(source))
   );
@@ -44,7 +42,6 @@ export async function fetchAllSources(sources) {
     .filter((r) => r.status === 'fulfilled')
     .flatMap((r) => r.value);
 
-  console.log(`📦 Total articles collected: ${articles.length}`);
   return articles;
 }
 

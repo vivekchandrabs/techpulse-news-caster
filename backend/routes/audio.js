@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { textToSpeech } from '../services/tts.js';
+import { generateNarration } from '../services/summarizer.js';
 import { getDb } from '../db/database.js';
 
 const router = Router();
@@ -7,6 +8,8 @@ const router = Router();
 /**
  * POST /api/audio/article/:id
  * Generate speech for a specific article using OpenAI TTS.
+ * Uses the conversational narration text (not the bullet-point summary).
+ * If no narration exists, generates one on-demand and caches it.
  * Returns: audio/mpeg stream
  */
 router.post('/article/:id', async (req, res) => {
@@ -18,21 +21,34 @@ router.post('/article/:id', async (req, res) => {
       return res.status(404).json({ error: 'Article not found' });
     }
 
-    // Compose narration text
-    const narrationText = `${article.title}.\n\n${article.summary || article.original_content || ''}`;
+    // Get or generate narration text
+    let narrationText = article.narration;
 
+    if (!narrationText) {
+
+      narrationText = await generateNarration(article);
+
+      // Cache it in the database for next time
+      try {
+        db.prepare('UPDATE articles SET narration = ? WHERE id = ?').run(narrationText, article.id);
+
+      } catch {
+        // Non-critical — narration column might not exist yet
+      }
+    }
+
+    // Generate audio from narration
     const response = await textToSpeech(narrationText);
 
-    // Set headers for audio streaming
+    // Set headers and stream audio
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Transfer-Encoding', 'chunked');
     res.setHeader('Cache-Control', 'no-cache');
 
-    // Stream the response body to client
     const arrayBuffer = await response.arrayBuffer();
     res.send(Buffer.from(arrayBuffer));
   } catch (err) {
-    console.error('TTS Error:', err.message);
+
     res.status(500).json({ error: err.message });
   }
 });
@@ -60,7 +76,7 @@ router.post('/speak', async (req, res) => {
     const arrayBuffer = await response.arrayBuffer();
     res.send(Buffer.from(arrayBuffer));
   } catch (err) {
-    console.error('TTS Error:', err.message);
+
     res.status(500).json({ error: err.message });
   }
 });
