@@ -45,23 +45,31 @@ Title: ${article.title}
 Content: ${content}`;
 
   // Generate conversational narration for TTS
-  const narrationPrompt = `You are a friendly and knowledgeable tech journalist telling a colleague about an interesting news story over coffee. Write a conversational narration of this article in under 500 words.
+  const narrationPrompt = `You are a tech podcast host delivering a segment to your listeners. Based on the article below, craft an engaging conversational narration in under 500 words.
 
-RULES:
-- Write in a natural, spoken style — as if you're verbally explaining the story to someone
-- Do NOT include any URLs, links, or web addresses
-- Do NOT use bullet points, numbered lists, or any formatting
-- Do NOT say things like "according to the article" or "the article mentions"
-- Start by naturally introducing the topic (e.g., "So here's something interesting..." or "Big news from...")
-- Include the key facts, why it matters, and any implications
-- End with a brief takeaway or forward-looking thought
-- Keep it engaging but factual — you're informing, not editorializing
-- Use natural transitions between ideas
+CRITICAL RULES:
+- This is a SPOKEN narration — write exactly how you would SAY this out loud to someone
+- Create an ORIGINAL story from the facts. Do NOT just read or rephrase the article content line by line
+- Do NOT include any URLs, links, web addresses, or references like "click here" or "link below"
+- Do NOT use bullet points, numbered lists, dashes, or any visual formatting
+- Do NOT say things like "according to the article" or "the article mentions" or "the report states"
+- Do NOT start with generic phrases like "Here's an interesting story" or "So here's something interesting" or "Let me tell you about"
+- Instead, open with a punchy, context-specific hook that grabs attention immediately. Jump right into what happened or why it matters. Examples:
+  * "Apple just dropped something big..."
+  * "If you're running Linux, you'll want to hear this..."
+  * "The EU is about to change how every tech company operates..."
+  * "A seventeen-year-old just outsmarted one of the biggest security firms..."
+  The opening must be specific to THIS article — never generic.
+- Weave the key facts into a flowing narrative — explain what happened, who's involved, why it matters, and what comes next
+- Use natural spoken transitions like "Now what's really interesting is..." or "And that's not all..." or "The bigger picture here is..."
+- End with a brief forward-looking thought or takeaway
+- Sound like a real human having a conversation, not a news anchor reading a teleprompter
 
 Article Title: ${article.title}
 Source: ${article.source_name || 'Unknown'}
 
-Article Content: ${content}`;
+Source Material:
+${content}`;
 
   try {
     // Run both prompts in parallel
@@ -123,11 +131,12 @@ function extractiveNarration(article) {
     .filter((s) => s.length > 15)
     .slice(0, 8);
 
-  return `Here's an interesting story. ${article.title}. ${sentences.join(' ')}`;
+  return `${article.title}. ${sentences.join(' ')}`;
 }
 
 /**
  * Generate a narration script for an article on-demand (for articles that don't have one).
+ * Uses original_content first for richer narration, falls back to summary.
  */
 export async function generateNarration(article) {
   const model = getClient();
@@ -135,22 +144,29 @@ export async function generateNarration(article) {
     return extractiveNarration(article);
   }
 
-  try {
-    const prompt = `You are a friendly and knowledgeable tech journalist telling a colleague about an interesting news story over coffee. Write a conversational narration in under 500 words.
+  // Prefer original content over summary — summary is bullet points which leads to robotic narration
+  const sourceContent = article.original_content || article.summary || article.title;
 
-RULES:
-- Write in a natural, spoken style — as if you're verbally explaining the story to someone
-- Do NOT include any URLs, links, or web addresses
-- Do NOT use bullet points, numbered lists, or any formatting
-- Start by naturally introducing the topic
-- Include the key facts, why it matters, and any implications
-- End with a brief takeaway or forward-looking thought
-- Keep it engaging but factual
+  try {
+    const prompt = `You are a tech podcast host delivering a segment to your listeners. Based on the source material below, craft an engaging conversational narration in under 500 words.
+
+CRITICAL RULES:
+- This is a SPOKEN narration — write exactly how you would SAY this out loud to someone
+- Create an ORIGINAL story from the facts. Do NOT just read or rephrase the source material line by line
+- Do NOT include any URLs, links, web addresses, or references like "click here" or "link below"
+- Do NOT use bullet points, numbered lists, dashes, or any visual formatting
+- Do NOT start with generic phrases like "Here's an interesting story" or "So here's something interesting" or "Let me tell you about"
+- Instead, open with a punchy, context-specific hook that grabs attention immediately. Jump right into what happened or why it matters
+- Weave the key facts into a flowing narrative — explain what happened, who's involved, why it matters, and what comes next
+- Use natural spoken transitions like "Now what's really interesting is..." or "And that's not all..." or "The bigger picture here is..."
+- End with a brief forward-looking thought or takeaway
+- Sound like a real human having a conversation, not a news anchor reading a teleprompter
 
 Article Title: ${article.title}
 Source: ${article.source_name || 'Unknown'}
 
-Article Content: ${article.summary || article.original_content || article.title}`;
+Source Material:
+${sourceContent}`;
 
     const result = await model.generateContent(prompt);
     return result.response.text().trim();

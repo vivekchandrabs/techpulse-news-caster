@@ -744,10 +744,61 @@ a:hover {
   font-family: var(--font-mono);
 }
 
+.player-bar__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 60px;
+}
+
 .player-bar__queue-info {
   font-size: 0.75rem;
   color: var(--text-tertiary);
   white-space: nowrap;
+}
+
+/* Autoplay toggle */
+.autoplay-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.autoplay-toggle:hover {
+  border-color: rgba(99, 117, 171, 0.3);
+  color: var(--text-secondary);
+  background: var(--glass-hover);
+}
+
+.autoplay-toggle--on {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--accent-tertiary);
+}
+
+.autoplay-toggle--on:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.autoplay-toggle__icon {
+  font-size: 0.75rem;
+}
+
+.autoplay-toggle__label {
+  letter-spacing: 0.03em;
 }
 
 /* ---- Settings Page ---- */

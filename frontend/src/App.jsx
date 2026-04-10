@@ -20,12 +20,17 @@ function App() {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(true);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef(new Audio());
+  const autoPlayRef = useRef(autoPlay);
 
   const currentArticle = currentIndex >= 0 ? queue[currentIndex] : null;
+
+  // Keep ref in sync so onended callback reads latest value
+  useEffect(() => { autoPlayRef.current = autoPlay; }, [autoPlay]);
 
   // Toast helper
   const addToast = useCallback((message, type = 'info') => {
@@ -177,10 +182,10 @@ function App() {
       const audio = audioRef.current;
       audio.src = audioUrl;
 
-      // Auto-advance when track ends
+      // Handle track end
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
-        if (index < articleQueue.length - 1) {
+        if (autoPlayRef.current && index < articleQueue.length - 1) {
           const nextIndex = index + 1;
           setTimeout(() => {
             playArticle(articleQueue[nextIndex], articleQueue, nextIndex);
@@ -189,7 +194,9 @@ function App() {
           setIsPlaying(false);
           setCurrentIndex(-1);
           setProgress(0);
-          addToast('Finished playing all articles', 'success');
+          if (autoPlayRef.current) {
+            addToast('Finished playing all articles', 'success');
+          }
         }
       };
 
@@ -302,6 +309,15 @@ function App() {
         </nav>
 
         <div className="header__actions">
+          <button
+            className={`autoplay-toggle ${autoPlay ? 'autoplay-toggle--on' : ''}`}
+            onClick={() => setAutoPlay((p) => !p)}
+            title={autoPlay ? 'Autoplay: ON — next article plays automatically' : 'Autoplay: OFF — stops after current article'}
+            id="btn-autoplay"
+          >
+            <span className="autoplay-toggle__icon">{autoPlay ? '🔁' : '1️⃣'}</span>
+            <span className="autoplay-toggle__label">{autoPlay ? 'Auto' : 'Single'}</span>
+          </button>
           <button
             id="btn-fetch-news"
             className={`btn btn--primary ${fetching ? 'btn--loading' : ''}`}

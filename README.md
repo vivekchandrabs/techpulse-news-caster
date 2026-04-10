@@ -4,6 +4,8 @@
 
 ![TechPulse](https://img.shields.io/badge/TechPulse-AI%20News%20Narrator-6366f1?style=for-the-badge)
 
+🎥 **[Watch the TechPulse Demo Video on YouTube](https://www.youtube.com/watch?v=8LTd-p104Ec)**
+
 ## ✨ Features
 
 - **📡 Multi-Source Aggregation** — Pull news from RSS feeds (TechCrunch, The Verge, Ars Technica, etc.)
@@ -73,13 +75,13 @@ cd frontend && npm run dev
 
 Go to **Vercel Dashboard → Your Project → Settings → Environment Variables** and add:
 
-| Variable          | Required | Description                               |
-| ----------------- | -------- | ----------------------------------------- |
-| `GEMINI_API_KEY`  | ✅ Yes   | Google Gemini API key for AI summaries     |
-| `CRON_SECRET`     | ✅ Yes   | Secret to authenticate cron requests       |
-| `FRONTEND_URL`    | ✅ Yes   | Your production URL (e.g., `https://techpulse.vercel.app`) |
-| `NODE_ENV`        | Optional | Set to `production`                        |
-| `NEWSAPI_KEY`     | Optional | NewsAPI key for additional sources         |
+| Variable         | Required | Description                                                |
+| ---------------- | -------- | ---------------------------------------------------------- |
+| `GEMINI_API_KEY` | ✅ Yes    | Google Gemini API key for AI summaries                     |
+| `CRON_SECRET`    | ✅ Yes    | Secret to authenticate cron requests                       |
+| `FRONTEND_URL`   | ✅ Yes    | Your production URL (e.g., `https://techpulse.vercel.app`) |
+| `NODE_ENV`       | Optional | Set to `production`                                        |
+| `NEWSAPI_KEY`    | Optional | NewsAPI key for additional sources                         |
 
 > **Tip:** Generate a `CRON_SECRET` with: `openssl rand -hex 32`
 
@@ -123,11 +125,11 @@ curl -X GET https://your-app.vercel.app/api/cron \
 
 ### Environment Files Reference
 
-| File               | Purpose                          | Commit to Git? |
-| ------------------ | -------------------------------- | -------------- |
-| `.env.local`       | Local development defaults       | ❌ No          |
-| `.env.production`  | Production template / reference  | ✅ Yes (no secrets) |
-| `.env`             | Active local config (your keys)  | ❌ No          |
+| File              | Purpose                         | Commit to Git?     |
+| ----------------- | ------------------------------- | ------------------ |
+| `.env.local`      | Local development defaults      | ❌ No               |
+| `.env.production` | Production template / reference | ✅ Yes (no secrets) |
+| `.env`            | Active local config (your keys) | ❌ No               |
 
 ---
 
